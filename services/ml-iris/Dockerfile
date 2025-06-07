@@ -17,4 +17,4 @@ FROM base AS service
 ENV MLMODELS_DIR=/models
 ENV PYTHONPATH=/app
 COPY src/ .
-CMD ["fastapi", "run", "/app/app.py", "--port", "80"]
+CMD ["sh", "-c", "fastapi run /app/app.py --port ${PORT:-80}"]
