@@ -30,7 +30,7 @@ jobs:
           docker build --target service -t service ${{ env.DIRECTORY }}
           docker build --target testing -t testing ${{ env.DIRECTORY }}
 
-      - name: Comentario de PR: Ejecutando pruebas
+      - name: 'Comentario de PR: Ejecutando pruebas'
         uses: thollander/actions-comment-pull-request@v3
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -38,10 +38,9 @@ jobs:
             ⚙ Ejecutando pruebas unitarias...
 
       - name: Ejecutar imagen de contenedor de pruebas
-        run: |
-          docker run --rm testing
+        run: docker run --rm testing
 
-      - name: Comentario de PR: Pruebas exitosas
+      - name: 'Comentario de PR: Pruebas exitosas'
         uses: thollander/actions-comment-pull-request@v3
         with:
           message: |
