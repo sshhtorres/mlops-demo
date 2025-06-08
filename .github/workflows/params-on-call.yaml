@@ -1,0 +1,50 @@
+name: params-on-call
+on:
+  workflow_call:
+    outputs:
+      branch:
+        value: ${{ jobs.params.outputs.branch }}
+      directory:
+        value: ${{ jobs.params.outputs.directory }}
+      environment:
+        value: ${{ jobs.params.outputs.environment }}
+      service:
+        value: ${{ jobs.params.outputs.service }}
+
+jobs:
+  params:
+    outputs:
+      branch: ${{ steps.params.outputs.branch }}
+      directory: ${{ steps.params.outputs.directory }}
+      environment: ${{ steps.params.outputs.environment }}
+      service: ${{ steps.params.outputs.service }}
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - id: params
+        name: Definir variables adicionales de ambiente
+        run: |
+          echo "github.event_name=${{ github.event_name }}"
+          echo "github.base_ref=${{ github.base_ref }}"
+
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            BRANCH="${{ github.base_ref }}"
+          else
+            BRANCH="${GITHUB_REF#refs/heads/}"
+          fi
+
+          ENVIRONMENT="${BRANCH##*/}"
+          DIRECTORY="${BRANCH%/$ENVIRONMENT}"
+          SERVICE="${DIRECTORY#services/}"
+
+          PARAMS=$(cat <<EOF
+          branch=${BRANCH}
+          directory=${DIRECTORY}
+          environment=${ENVIRONMENT}
+          service=${SERVICE}
+          EOF
+          )
+
+          echo "${PARAMS}"
+          echo "${PARAMS}" >> $GITHUB_OUTPUT

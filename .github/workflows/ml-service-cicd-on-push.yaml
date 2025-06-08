@@ -1,0 +1,78 @@
+name: ml-service-cicd-on-push
+on:
+  push:
+    branches:
+      - services/**
+
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: ${{ vars.PROJECT_ID }}
+  REGION: ${{ vars.REGION }}
+  SERVICE_ACCOUNT_EMAIL: ${{ vars.SERVICE_ACCOUNT_EMAIL }}
+  WORKLOAD_IDENTITY_PROVIDER: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
+
+permissions:
+  contents: read
+  id-token: write  # Required for Workload Identity Federation
+
+jobs:
+  cicd:
+    uses: ./.github/workflows/service-cicd-on-call.yaml
+    secrets: inherit
+
+  deploy:
+    needs: cicd
+
+    env:
+      ENVIRONMENT: "${{ needs.cicd.outputs.environment }}"
+      IMAGE_URI: "${{ needs.cicd.outputs.image_uri }}"
+      SERVICE: "${{ needs.cicd.outputs.service }}"
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          service_account: ${{ env.SERVICE_ACCOUNT_EMAIL }}
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Configurar variables
+        run: |
+          # bash expansion requires setting env variable at runtime
+          SERVICE="${{ env.SERVICE }}"
+
+          MODEL_URI_VAR_NAME="${SERVICE/-/_}_model_uri_${{ env.ENVIRONMENT }}"
+          MODEL_URI_VAR_NAME="${MODEL_URI_VAR_NAME^^}"
+          echo "MODEL_URI_VAR_NAME=$MODEL_URI_VAR_NAME"
+          echo "MODEL_URI_VAR_NAME=$MODEL_URI_VAR_NAME" >> "$GITHUB_ENV"
+
+          SERVICE_ID="${{ env.SERVICE }}-${{ env.ENVIRONMENT }}"
+          echo "SERVICE_ID=$SERVICE_ID"
+          echo "SERVICE_ID=$SERVICE_ID" >> "$GITHUB_ENV"
+
+      - name: Configurar URI de modelo
+        env:
+          MODEL_URI: ${{ vars[env.MODEL_URI_VAR_NAME] }}
+        run: |
+          MODEL_URI="${{ env.MODEL_URI }}"
+          if [[ -z "$MODEL_URI" ]]; then
+            echo "error: MODEL_URI is empty" >&2
+            exit 1
+          fi
+          echo "MODEL_URI=$MODEL_URI"
+          echo "MODEL_URI=$MODEL_URI" >> "$GITHUB_ENV"
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy "${{ env.SERVICE_ID }}" --quiet \
+            --allow-unauthenticated \
+            --image "${{ env.IMAGE_URI }}" \
+            --region ${{ env.REGION }} \
+            --set-env-vars "MLMODEL_URI=${{ env.MODEL_URI }}"

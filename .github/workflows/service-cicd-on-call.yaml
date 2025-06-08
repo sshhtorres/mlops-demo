@@ -1,0 +1,82 @@
+name: service-cicd-on-call
+on:
+  workflow_call:
+    outputs:
+      environment:
+        value: ${{ jobs.params.outputs.environment }}
+      image_uri:
+        description: "URI of the image delivered to Artifact Registry"
+        value: ${{ jobs.cicd.outputs.image_uri }}
+      service:
+        value: ${{ jobs.params.outputs.service }}
+
+env:
+  AR_HOST: ${{ vars.AR_HOST }}          # host of Artifact Registry repository
+  AR_REPO_URL: ${{ vars.AR_REPO_URL }}  # URL of Artifact Registry repository
+  PROJECT_ID: ${{ vars.PROJECT_ID }}    # Google Cloud project identifier
+  SERVICE_ACCOUNT_EMAIL: ${{ vars.SERVICE_ACCOUNT_EMAIL }}
+  WORKLOAD_IDENTITY_PROVIDER: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
+
+jobs:
+  params:
+    uses: ./.github/workflows/params-on-call.yaml
+
+  cicd:
+    needs: params
+    outputs:
+      image_uri: ${{ steps.deliver.outputs.image_uri }}
+    permissions:
+      contents: read
+      id-token: write  # Required for Workload Identity Federation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Construir imágenes de servicio y pruebas
+        env:
+          DIRECTORY: ${{ needs.params.outputs.directory }}
+        run: |
+          docker build --target service -t service ${{ env.DIRECTORY }}
+          docker build --target testing -t testing ${{ env.DIRECTORY }}
+
+      - name: Ejecutar imagen de contenedor de pruebas
+        run: docker run --rm testing
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          service_account: ${{ env.SERVICE_ACCOUNT_EMAIL }}
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Log in to Google Artifact Registry
+        run: gcloud auth configure-docker "${{ env.AR_HOST }}"
+
+      - id: deliver
+        name: Subir imagen de contenedor de servicio a Google Artifact Registry
+        env:
+          ENVIRONMENT: ${{ needs.params.outputs.environment }}
+          SERVICE: ${{ needs.params.outputs.service }}
+
+        run: |
+          AR_IMAGE_TAG_1="${{ env.AR_REPO_URL }}/${{ env.SERVICE }}:${{ github.sha }}"
+          AR_IMAGE_TAG_2="${{ env.AR_REPO_URL }}/${{ env.SERVICE }}:${{ env.ENVIRONMENT }}"
+
+          docker tag service "$AR_IMAGE_TAG_1"
+          docker tag service "$AR_IMAGE_TAG_2"
+          docker push "$AR_IMAGE_TAG_1"
+          docker push "$AR_IMAGE_TAG_2"
+
+          echo "AR_IMAGE_TAG_1=${AR_IMAGE_TAG_1}"
+          echo "AR_IMAGE_TAG_2=${AR_IMAGE_TAG_2}"
+
+          echo "image_uri=${AR_IMAGE_TAG_1}" >> "$GITHUB_OUTPUT"
