@@ -1,6 +1,7 @@
 *.onnx
 .data/
 .models/
+.terraform/
 
 
 # Byte-compiled / optimized / DLL files
