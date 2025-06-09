@@ -4,4 +4,4 @@ WORKDIR /app
 COPY .python-version pyproject.toml uv.lock .
 RUN uv sync --locked --no-cache --no-dev
 COPY . .
-CMD ["uv", "run", "streamlit", "run", "src/app.py"]
+CMD ["sh", "-c", "uv run streamlit run src/app.py --server.port ${PORT:-8501}"]
