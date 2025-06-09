@@ -1,0 +1,42 @@
+name: webapps-params-on-call
+on:
+  workflow_call:
+    outputs:
+      branch:
+        value: ${{ jobs.params.outputs.branch }}
+      directory:
+        value: ${{ jobs.params.outputs.directory }}
+      webapp:
+        value: ${{ jobs.params.outputs.webapp }}
+
+jobs:
+  params:
+    outputs:
+      branch: ${{ steps.params.outputs.branch }}
+      directory: ${{ steps.params.outputs.directory }}
+      webapp: ${{ steps.params.outputs.webapp }}
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - id: params
+        name: Definir variables adicionales de ambiente
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            BRANCH="${{ github.base_ref }}"
+          else
+            BRANCH="${GITHUB_REF#refs/heads/}"
+          fi
+
+          DIRECTORY="${BRANCH}"
+          WEBAPP="${DIRECTORY#webapps/}"
+
+          PARAMS=$(cat <<EOF
+          branch=${BRANCH}
+          directory=${DIRECTORY}
+          webapp=${WEBAPP}
+          EOF
+          )
+
+          echo "${PARAMS}"
+          echo "${PARAMS}" >> $GITHUB_OUTPUT
