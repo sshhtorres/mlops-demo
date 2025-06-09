@@ -49,7 +49,7 @@ jobs:
           SERVICE="${{ env.SERVICE }}"
 
           SERVICES_CONFIG=.github/configs/services-config.json
-          INSTANCE_MEMORY=$"(jq -cr ".[\"$SERVICE\"] // ._default | .memory" "$SERVICES_CONFIG")"
+          INSTANCE_MEMORY="$(jq -cr ".[\"$SERVICE\"] // ._default | .memory" "$SERVICES_CONFIG")"
           echo "INSTANCE_MEMORY=$INSTANCE_MEMORY" >> "$GITHUB_ENV"
 
           MODEL_URI_VAR_NAME="${SERVICE/-/_}_model_uri_${{ env.ENVIRONMENT }}"
