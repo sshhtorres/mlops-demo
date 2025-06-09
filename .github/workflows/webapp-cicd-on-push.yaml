@@ -1,0 +1,52 @@
+name: webapp-cicd-on-push
+on:
+  push:
+    branches:
+      - webapps/**
+
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: ${{ vars.PROJECT_ID }}
+  REGION: ${{ vars.REGION }}
+  SERVICE_ACCOUNT_EMAIL: ${{ vars.SERVICE_ACCOUNT_EMAIL }}
+  WORKLOAD_IDENTITY_PROVIDER: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
+
+permissions:
+  contents: read
+  id-token: write  # Required for Workload Identity Federation
+
+jobs:
+  cicd:
+    uses: ./.github/workflows/webapp-cicd-on-call.yaml
+    secrets: inherit
+
+  deploy:
+    needs: cicd
+
+    env:
+      ENVIRONMENT: "${{ needs.cicd.outputs.environment }}"
+      IMAGE_URI: "${{ needs.cicd.outputs.image_uri }}"
+      WEBAPP: "${{ needs.cicd.outputs.webapp }}"
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          service_account: ${{ env.SERVICE_ACCOUNT_EMAIL }}
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy "${{ env.WEBAPP }}" --quiet \
+            --allow-unauthenticated \
+            --image "${{ env.IMAGE_URI }}" \
+            --region ${{ env.REGION }} \
+            --set-env-vars "ML_IRIS_SERVICE_URL=${{ env.ML_IRIS_SERVICE_URL_DEV }},ML_MNIST_SERVICE_URL=${{ env.ML_MNIST_SERVICE_URL_DEV }}"
