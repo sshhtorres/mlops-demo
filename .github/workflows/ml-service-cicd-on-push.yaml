@@ -43,6 +43,9 @@ jobs:
         with:
           project_id: ${{ env.PROJECT_ID }}
 
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
       - name: Configurar variables
         run: |
           # bash expansion requires setting env variable at runtime
