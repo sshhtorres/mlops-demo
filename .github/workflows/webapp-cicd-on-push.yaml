@@ -45,7 +45,7 @@ jobs:
 
       - name: Deploy to Cloud Run
         run: |
-          gcloud run deploy "${{ env.SERVICE_ID }}" --quiet \
+          gcloud run deploy "${{ env.WEBAPP }}" --quiet \
             --allow-unauthenticated \
             --image "${{ env.IMAGE_URI }}" \
             --region ${{ env.REGION }} \
