@@ -1,0 +1,8 @@
+{
+    "_default": {
+        "memory": "512Mi"
+    },
+    "ml-mnist": {
+        "memory": "1Gi"
+    }
+}

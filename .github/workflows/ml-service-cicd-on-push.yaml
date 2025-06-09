@@ -31,6 +31,9 @@ jobs:
 
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
@@ -47,6 +50,10 @@ jobs:
         run: |
           # bash expansion requires setting env variable at runtime
           SERVICE="${{ env.SERVICE }}"
+
+          SERVICES_CONFIG=.github/configs/services-config.json
+          INSTANCE_MEMORY="$(jq -cr ".[\"$SERVICE\"] // ._default | .memory" "$SERVICES_CONFIG")"
+          echo "INSTANCE_MEMORY=$INSTANCE_MEMORY" >> "$GITHUB_ENV"
 
           MODEL_URI_VAR_NAME="${SERVICE/-/_}_model_uri_${{ env.ENVIRONMENT }}"
           MODEL_URI_VAR_NAME="${MODEL_URI_VAR_NAME^^}"
@@ -74,5 +81,6 @@ jobs:
           gcloud run deploy "${{ env.SERVICE_ID }}" --quiet \
             --allow-unauthenticated \
             --image "${{ env.IMAGE_URI }}" \
+            --memory "${{ env.INSTANCE_MEMORY }}" \
             --region ${{ env.REGION }} \
             --set-env-vars "MLMODEL_URI=${{ env.MODEL_URI }}"
