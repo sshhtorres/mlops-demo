@@ -1,0 +1,36 @@
+name: webapp-ci-on-pull-request
+on:
+  pull_request:
+    branches:
+      - webapps/**
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  params:
+    uses: ./.github/workflows/webapp-params-on-call.yaml
+
+  ci:
+    needs: params
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Construir imágen de servicio webapp
+        env:
+          DIRECTORY: ${{ needs.params.outputs.directory }}
+        run: |
+          # validar construcción de imagen de servicio webapp
+          docker build -t webapp ${{ env.DIRECTORY }}
+
+      - name: 'Comentario de PR: Pruebas exitosas'
+        uses: thollander/actions-comment-pull-request@v3
+        with:
+          message: |
+            ✅ CI exitoso
