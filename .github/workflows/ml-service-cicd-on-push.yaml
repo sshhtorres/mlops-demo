@@ -48,7 +48,7 @@ jobs:
           # bash expansion requires setting env variable at runtime
           SERVICE="${{ env.SERVICE }}"
 
-          SERVICES_CONFIG=.github/configs/service-config.json
+          SERVICES_CONFIG=.github/configs/services-config.json
           INSTANCE_MEMORY=$"(jq -cr ".[\"$SERVICE\"] // ._default | .memory" "$SERVICES_CONFIG")"
           echo "INSTANCE_MEMORY=$INSTANCE_MEMORY" >> "$GITHUB_ENV"
 
