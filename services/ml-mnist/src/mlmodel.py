@@ -25,7 +25,7 @@ class ModelService:
         return self.session is not None
 
 
-    def load_model(self, model_uri: str):
+    def load_model(self, model_uri: str) -> None:
         if model_uri.startswith("http://") or model_uri.startswith("https://"):
             filepath = download_model_from_http(model_uri)
         elif model_uri.startswith("gs://"):
@@ -47,7 +47,7 @@ class ModelService:
             raise RuntimeError(f"Error al cargar el modelo")
 
 
-    def predict(self, request: PredictRequest):
+    def predict(self, request: PredictRequest) -> PredictResponse:
         input_name = self.session.get_inputs()[0].name
         output_name = self.session.get_outputs()[0].name
 
@@ -88,7 +88,7 @@ class ModelService:
 
 
     @staticmethod
-    def preprocess_image(image: PIL.Image.Image):
+    def preprocess_image(image: PIL.Image.Image) -> np.ndarray:
         transform = transforms.Compose([
             transforms.Grayscale(),
             transforms.Resize((28, 28)),
